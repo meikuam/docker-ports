@@ -3,11 +3,22 @@ from fastapi.responses import HTMLResponse
 import docker
 import logging
 from typing import List, Dict, Any
+import asyncio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Docker Ports Viewer", version="1.0.0")
+
+async def get_docker_client():
+    """Create and return Docker client"""
+    try:
+        client = docker.from_env()
+        client.ping()
+        return client
+    except Exception as e:
+        logger.error(f"Docker connection failed: {e}")
+        raise HTTPException(status_code=503, detail="Cannot connect to Docker daemon")
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -67,3 +78,43 @@ async def list_containers():
     except Exception as e:
         logger.error(f"Error listing containers: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/stats")
+async def get_stats():
+    """Get CPU/Memory statistics from containers"""
+    try:
+        client = docker.from_env()
+        
+        async def get_stats_for_container(container):
+            try:
+                stats = container.stats(stream=False)
+                cpu_percent = stats['cpu_stats']['cpu_usage']['total_usage'] / stats['system_stats']['cpu_usage']['total_usage'] * 100 \
+                              if stats['system_stats']['cpu_usage']['total_usage'] > 0 else 0
+                
+                memory_percent = stats['memory_stats']['usage'] / stats['memory_stats']['limit'] * 100 \
+                                 if stats['memory_stats']['limit'] > 0 else 0
+                
+                return {
+                    "id": container.id[:12],
+                    "name": container.name,
+                    "cpu": round(cpu_percent, 2),
+                    "memory": round(memory_percent, 2),
+                    "net_input": stats.get('networks', {}).get('eth0', {}).get('rx_bytes', 0),
+                    "net_output": stats.get('networks', {}).get('eth0', {}).get('tx_bytes', 0)
+                }
+            except Exception as e:
+                logger.error(f"Error getting stats for {container.name}: {e}")
+                return None
+        
+        tasks = [get_stats_for_container(c) for c in client.containers.list(all=True)]
+        stats_list = await asyncio.gather(*tasks)
+        
+        return {"stats": [s for s in stats_list if s]}
+    
+    except Exception as e:
+        logger.error(f"Error getting stats: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
