@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Ports Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding: 20px 0;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .health-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .health-status {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #28a745;
+            margin: 15px 0;
+        }
+
+        .health-status.unhealthy {
+            color: #dc3545;
+        }
+
+        .health-info {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+
+        .health-info i {
+            margin-right: 8px;
+            font-size: 1.2rem;
+        }
+
+        .containers-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .section-title {
+            color: #333;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .containers-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .container-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .container-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .container-card.running {
+            border-left: 5px solid #28a745;
+        }
+
+        .container-card.exited {
+            border-left: 5px solid #dc3545;
+        }
+
+        .container-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .container-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .container-id {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+
+        .container-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #555;
+        }
+
+        .info-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .info-item.running {
+            color: #28a745;
+        }
+
+        .info-item.exited {
+            color: #dc3545;
+        }
+
+        .info-item.healthy {
+            color: #28a745;
+        }
+
+        .container-image {
+            color: #667eea;
+            font-weight: 500;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .ports-list {
+            margin-top: 10px;
+        }
+
+        .port-item {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .port-item:first-child {
+            margin-top: 0;
+        }
+
+        .port-item i {
+            color: #667eea;
+            margin-right: 8px;
+        }
+
+        .btn-details {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: opacity 0.2s;
+        }
+
+        .btn-details:hover {
+            opacity: 0.9;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #ced4da;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            padding: 20px 0;
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .containers-list {
+                grid-template-columns: 1fr;
+            }
+
+            .info-item {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fab fa-docker"></i> Docker Ports Admin</h1>
+            <p>Панель управления контейнерами</p>
+        </div>
+
+        <div class="health-card">
+            <h2><i class="fas fa-heartbeat"></i> Статус системы</h2>
+            <div class="health-info">
+                <div>
+                    <i class="fas fa-server"></i>
+                    <span>Docker</span>
+                </div>
+                <div>
+                    <i class="fas fa-check-circle"></i>
+                    <span>API</span>
+                </div>
+            </div>
+            <div class="health-status" id="healthStatus">
+                <i class="fas fa-spinner fa-spin"></i> Проверка...
+            </div>
+        </div>
+
+        <div class="containers-section">
+            <div class="section-title">
+                <i class="fas fa-box"></i>
+                Контейнеры
+            </div>
+            <div class="containers-list" id="containersList">
+                <div class="empty-state">
+                    <i class="fas fa-cube"></i>
+                    <p>Загрузка контейнеров...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Docker Ports Viewer &copy; 2024</p>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+
+        async function checkHealth() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+
+                const healthStatus = document.getElementById('healthStatus');
+                if (data.status === 'healthy') {
+                    healthStatus.innerHTML = '<i class="fas fa-check-circle"></i> Система работает';
+                    healthStatus.classList.remove('unhealthy');
+                } else {
+                    healthStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Проблема с подключением';
+                    healthStatus.classList.add('unhealthy');
+                }
+            } catch (error) {
+                const healthStatus = document.getElementById('healthStatus');
+                healthStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Нет подключения';
+                healthStatus.classList.add('unhealthy');
+            }
+        }
+
+        async function loadContainers() {
+            try {
+                const response = await fetch('/containers');
+                const data = await response.json();
+
+                const containersList = document.getElementById('containersList');
+
+                if (data.containers.length === 0) {
+                    containersList.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1 / -1;">
+                            <i class="fas fa-cube"></i>
+                            <p>Нет контейнеров</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                containersList.innerHTML = data.containers.map(container => `
+                    <div class="container-card ${container.status}">
+                        <div class="container-header">
+                            <div class="container-name">
+                                <i class="fas fa-box"></i> ${container.name}
+                            </div>
+                            <div class="container-id">
+                                <code>${container.id.substring(0, 12)}</code>
+                            </div>
+                        </div>
+                        <div class="container-info">
+                            <div class="info-item ${container.status}">
+                                <i class="fas fa-${container.status === 'running' ? 'play' : 'pause'}"></i>
+                                <span>${container.status}</span>
+                            </div>
+                            <div class="info-item" title="Created: ${new Date(container.created).toLocaleString('ru-RU')}">
+                                <i class="fas fa-calendar"></i>
+                                <span>${new Date(container.created).toLocaleDateString('ru-RU')}</span>
+                            </div>
+                        </div>
+                        <div class="container-image">
+                            <i class="fab fa-docker"></i> ${container.image}
+                        </div>
+                        ${container.ports.length > 0 ? `
+                            <div class="ports-list">
+                                ${container.ports.map(port => `
+                                    <div class="port-item">
+                                        <i class="fas fa-plug"></i>
+                                        <strong>${port.container_port}</strong>
+                                        → ${port.host_bindings.join(', ')}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        <button class="btn-details" onclick="showDetails('${container.id}')">
+                            <i class="fas fa-info-circle"></i> Подробнее
+                        </button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading containers:', error);
+                document.getElementById('containersList').innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Ошибка загрузки контейнеров</p>
+                    </div>
+                `;
+            }
+        }
+
+        function showDetails(containerId) {
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="ru">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Контейнер: ${containerId}</title>
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+                    <style>
+                        body {
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                            background: #f5f5f5;
+                            padding: 40px;
+                            line-height: 1.6;
+                        }
+                        .container {
+                            max-width: 900px;
+                            margin: 0 auto;
+                            background: white;
+                            border-radius: 10px;
+                            padding: 30px;
+                            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                        }
+                        h1 {
+                            color: #333;
+                            margin-bottom: 20px;
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                        }
+                        .section {
+                            margin: 20px 0;
+                            padding: 15px;
+                            background: #f9f9f9;
+                            border-radius: 5px;
+                        }
+                        .section h2 {
+                            color: #667eea;
+                            font-size: 1.2rem;
+                            margin-bottom: 10px;
+                        }
+                        pre {
+                            background: #f4f4f4;
+                            padding: 15px;
+                            border-radius: 5px;
+                            overflow-x: auto;
+                            margin-top: 10px;
+                        }
+                        code {
+                            font-family: 'Courier New', monospace;
+                            font-size: 0.9rem;
+                            color: #333;
+                        }
+                        .key-value {
+                            display: flex;
+                            justify-content: space-between;
+                            padding: 5px 0;
+                            border-bottom: 1px solid #eee;
+                        }
+                        .key {
+                            color: #666;
+                            font-weight: 500;
+                        }
+                        .value {
+                            color: #333;
+                        }
+                        .tag {
+                            display: inline-block;
+                            padding: 4px 10px;
+                            border-radius: 15px;
+                            font-size: 0.8rem;
+                            margin-right: 5px;
+                            background: #667eea;
+                            color: white;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <a href="/" class="back-btn">
+                            <i class="fas fa-arrow-left"></i> Вернуться к списку
+                        </a>
+                        <h1>
+                            <i class="fas fa-box"></i>
+                            Контейнер: <code>${containerId}</code>
+                        </h1>
+
+                        <div class="section">
+                            <h2>Общая информация</h2>
+                            <div class="key-value">
+                                <span class="key"><i class="fas fa-tag"></i> Имя:</span>
+                                <span class="value">${containerId.substring(0, 12)}</span>
+                            </div>
+                            <div class="key-value">
+                                <span class="key"><i class="fas fa-server"></i> Статус:</span>
+                                <span class="value">${containerId.substring(0, 12)}</span>
+                            </div>
+                            <div class="key-value">
+                                <span class="key"><i class="fas fa-image"></i> Образ:</span>
+                                <span class="value">${containerId.substring(0, 12)}</span>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h2>Порты</h2>
+                            <div class="key-value">
+                                <span class="key"><i class="fas fa-plug"></i> Контейнерные порты:</span>
+                                <span class="value">${containerId.substring(0, 12)}</span>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h2>Создан:</h2>
+                            <div class="key-value">
+                                <span class="key"><i class="fas fa-calendar"></i> Время:</span>
+                                <span class="value">${containerId.substring(0, 12)}</span>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h2>Состояние</h2>
+                            <div class="key-value">
+                                <span class="key"><i class="fas fa-tachometer-alt"></i> PID:</span>
+                                <span class="value">${containerId.substring(0, 12)}</span>
+                            </div>
+                            <div class="key-value">
+                                <span class="key"><i class="fas fa-check-square"></i> Работает:</span>
+                                <span class="value">${containerId.substring(0, 12)}</span>
+                            </div>
+                            <div class="key-value">
+                                <span class="key"><i class="fas fa-pause-circle"></i> Остановлен:</span>
+                                <span class="value">${containerId.substring(0, 12)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkHealth();
+            loadContainers();
+
+            // Auto-refresh every 30 seconds
+            autoRefreshInterval = setInterval(() => {
+                loadContainers();
+            }, 30000);
+
+            // Stop auto-refresh when user interacts
+            const stopAutoRefresh = () => {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            };
+
+            document.addEventListener('click', stopAutoRefresh);
+            document.addEventListener('input', stopAutoRefresh);
+            document.addEventListener('scroll', stopAutoRefresh);
+        });
+    </script>
+</body>
+</html>
