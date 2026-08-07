@@ -1,18 +1,20 @@
-from pydantic_settings import BaseSettings
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
-class Settings(BaseSettings):
-    """Application settings from environment"""
+class Settings:
+    """Application settings loaded from environment"""
 
-    title: str = "Docker Ports Viewer"
-    version: str = "1.0.0"
+    title = os.getenv("APP_TITLE")
+    version = os.getenv("APP_VERSION")
 
-    docker_host: str = "unix:///var/run/docker.sock"
-    docker_tls_verify: str = "0"
+    host = os.getenv("APP_HOST")
+    port = int(os.getenv("APP_PORT"))
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    docker_host = os.getenv("DOCKER_HOST")
+    docker_tls_verify = os.getenv("DOCKER_TLS_VERIFY")
 
 
 settings = Settings()

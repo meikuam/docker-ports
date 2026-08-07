@@ -1,7 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import Request
 from fastapi.templating import Jinja2Templates
 import docker
 import logging
@@ -12,8 +11,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title=settings.title,
-    version=settings.version
+    title=settings.title or "Docker Ports Viewer",
+    version=settings.version or "1.0.0"
 )
 
 app.add_middleware(
@@ -62,9 +61,20 @@ async def list_containers():
                 "id": container.id[:12],
                 "name": container.name,
                 "status": container.status,
-                "image": container.image.tags[0] if container.image.tags else container.image.id[:12],
                 "ports": []
             }
+
+            image = None
+            try:
+                image = container.image.tags[0] if container.image and container.image.tags else None
+            except (AttributeError, IndexError, TypeError):
+                try:
+                    image = container.image.id[:12]
+                except AttributeError:
+                    image = "unknown"
+
+            if image:
+                container_info["image"] = image
 
             ports = container.attrs.get('NetworkSettings', {}).get('Ports', {})
             if isinstance(ports, dict):
