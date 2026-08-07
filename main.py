@@ -1,22 +1,42 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Request
+from fastapi.templating import Jinja2Templates
 import docker
 import logging
 from typing import List, Dict, Any
 
-logging.basicConfig(level=logging.DEBUG)
+from app.config import settings
+
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Docker Ports Viewer", version="1.0.0")
+app = FastAPI(
+    title=settings.title,
+    version=settings.version
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+templates = Jinja2Templates(directory="templates")
+
 
 @app.get("/", response_class=HTMLResponse)
-async def root():
+async def root(request: Request):
     """Root endpoint - main admin page"""
     try:
-        with open("/app/index.html", "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="Template file not found")
+        return templates.TemplateResponse("index.html", {"request": request})
+    except Exception as e:
+        logger.error(f"Error rendering template: {e}")
+        raise HTTPException(status_code=500, detail="Template rendering failed")
+
 
 @app.get("/health")
 async def health_check():
@@ -26,7 +46,9 @@ async def health_check():
         client.ping()
         return {"status": "healthy", "docker": "connected"}
     except Exception as e:
+        logger.error(f"Health check failed: {e}")
         raise HTTPException(status_code=503, detail="Service unavailable")
+
 
 @app.get("/containers")
 async def list_containers():
@@ -35,7 +57,7 @@ async def list_containers():
         client = docker.from_env()
         containers = client.containers.list(all=True)
         containers_data = []
-        
+
         for container in containers:
             container_info = {
                 "id": container.id[:12],
@@ -44,7 +66,7 @@ async def list_containers():
                 "image": container.image.tags[0] if container.image.tags else container.image.id[:12],
                 "ports": []
             }
-            
+
             ports = container.attrs.get('NetworkSettings', {}).get('Ports', {})
             if isinstance(ports, dict):
                 for container_port, host_bindings in ports.items():
@@ -59,65 +81,63 @@ async def list_containers():
                             "container_port": container_port,
                             "host_bindings": bindings
                         })
-            
+
             containers_data.append(container_info)
-        
+
         return {"containers": containers_data}
-    
+
     except Exception as e:
         logger.error(f"Error listing containers: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @app.get("/stats")
 async def get_stats():
     """Get CPU/Memory statistics from containers"""
     try:
         client = docker.from_env()
-        
+
         def get_stats_for_container(container):
             try:
                 stats = container.stats(stream=False)
-                
+
                 logger.debug(f"Stats for {container.name}: {list(stats.keys())}")
-                
-                # Get CPU usage
+
                 cpu_percent = 0
                 cpu_stats = stats.get('cpu_stats', {})
                 precpu_stats = stats.get('precpu_stats', {})
-                
+
                 if cpu_stats and 'cpu_usage' in cpu_stats:
                     cpu_usage = cpu_stats['cpu_usage']
                     percpu_usage = cpu_stats.get('percpu_usage', [])
-                    
+
                     logger.debug(f"CPU usage: total={cpu_usage.get('total_usage')}, percpu={len(percpu_usage)}")
-                    
+
                     if precpu_stats and 'cpu_usage' in precpu_stats:
                         precpu_usage = precpu_stats['cpu_usage']
                         precpu_percpu_usage = precpu_stats.get('percpu_usage', [])
-                        
+
                         logger.debug(f"PreCPU usage: total={precpu_usage.get('total_usage')}, percpu={len(precpu_percpu_usage)}")
-                        
+
                         if 'total_usage' in cpu_usage and 'total_usage' in precpu_usage:
                             total_delta = cpu_usage['total_usage'] - precpu_usage['total_usage']
                             percpu_delta = sum(precpu_percpu_usage) - sum(percpu_usage)
-                            
+
                             system_delta = cpu_usage.get('system_cpu_usage', 0) - precpu_usage.get('system_cpu_usage', cpu_usage.get('system_cpu_usage', 0))
-                            
+
                             logger.debug(f"System delta: {system_delta}, percpu_delta: {percpu_delta}")
-                            
+
                             if system_delta > 0:
                                 cpu_percent = (percpu_delta / system_delta) * 100
                             else:
                                 cpu_percent = percpu_delta if percpu_delta > 0 else 0
                                 logger.debug(f"CPU calc fallback: {cpu_percent}")
-                
-                # Get memory usage
+
                 memory_percent = 0
                 memory_stats = stats.get('memory_stats', {})
                 if 'limit' in memory_stats and memory_stats['limit'] > 0:
                     memory_percent = memory_stats.get('usage', 0) / memory_stats['limit'] * 100
-                
-                # Get network stats
+
                 net_input = 0
                 net_output = 0
                 networks = stats.get('networks', {})
@@ -125,7 +145,7 @@ async def get_stats():
                     if isinstance(interface, dict):
                         net_input += interface.get('rx_bytes', 0)
                         net_output += interface.get('tx_bytes', 0)
-                
+
                 result = {
                     "id": container.id[:12],
                     "name": container.name,
@@ -139,14 +159,15 @@ async def get_stats():
             except Exception as e:
                 logger.error(f"Error getting stats for {container.name}: {e}")
                 return None
-        
+
         stats_list = [get_stats_for_container(c) for c in client.containers.list(all=True)]
-        
+
         return {"stats": [s for s in stats_list if s]}
-    
+
     except Exception as e:
         logger.error(f"Error getting stats: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 if __name__ == "__main__":
     import uvicorn
