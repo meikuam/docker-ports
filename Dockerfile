@@ -2,21 +2,22 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-RUN pip install --upgrade pip
+RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+    pip install --no-cache-dir poetry
 
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml poetry.lock* ./
 
-RUN pip install --no-cache-dir poetry-core && \
-    poetry lock --no-update && \
-    poetry install --no-interaction --no-root --no-ansi
+RUN poetry config virtualenvs.create false && \
+    poetry install --no-interaction --no-ansi --no-root
 
-COPY --chown=app . .
+COPY --chown=root . .
 
 RUN useradd -m -u 1001 app && \
-    chown -R app:app /app
+    groupmod -o -g 984 app && \
+    chown -R root:app /app
 
 USER app
 
 EXPOSE 8000
 
-ENTRYPOINT ["gunicorn", "main:app", "--worker-class", "uvicorn.workers.UvicornWorker", "--workers", "1"]
+ENTRYPOINT ["gunicorn", "main:app", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--workers", "1"]

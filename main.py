@@ -1,18 +1,20 @@
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.templating import Jinja2Templates
-import docker
 import logging
 
-from app.config import settings
+import docker
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title=settings.title or "Docker Ports Viewer",
-    version=settings.version or "1.0.0"
+    title="Docker Ports Viewer",
+    version="1.0.0"
 )
 
 app.add_middleware(
@@ -24,6 +26,10 @@ app.add_middleware(
 )
 
 templates = Jinja2Templates(directory="templates")
+
+def get_docker_client():
+    """Get Docker client with proper configuration"""
+    return docker.client.DockerClient(base_url="unix:///var/run/docker.sock", version="auto")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -40,7 +46,7 @@ async def root(request: Request):
 async def health_check():
     """Health check endpoint"""
     try:
-        client = docker.from_env()
+        client = get_docker_client()
         client.ping()
         return {"status": "healthy", "docker": "connected"}
     except Exception as e:
@@ -52,7 +58,7 @@ async def health_check():
 async def list_containers():
     """List all containers with their port bindings"""
     try:
-        client = docker.from_env()
+        client = get_docker_client()
         containers = client.containers.list(all=True)
         containers_data = []
 
@@ -104,7 +110,7 @@ async def list_containers():
 async def get_stats():
     """Get CPU/Memory statistics from containers"""
     try:
-        client = docker.from_env()
+        client = get_docker_client()
 
         def get_stats_for_container(container):
             try:
@@ -138,7 +144,7 @@ async def get_stats():
                             if system_delta > 0:
                                 cpu_percent = (percpu_delta / system_delta) * 100
                             else:
-                                cpu_percent = percpu_delta if percpu_delta > 0 else 0
+                                cpu_percent = max(0, percpu_delta)
                                 logger.debug(f"CPU calc fallback: {cpu_percent}")
 
                 memory_percent = 0
