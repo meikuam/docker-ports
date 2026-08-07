@@ -22,7 +22,13 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     try:
-        client = docker.from_env()
+        client = docker.from_env(
+            environment={
+                "DOCKER_HOST": "unix:///var/run/docker.sock",
+                "DOCKER_TLS_VERIFY": "1",
+                "DOCKER_CERT_PATH": "/certs"
+            }
+        )
         client.ping()
         return {"status": "healthy", "docker": "connected"}
     except Exception as e:
@@ -32,7 +38,13 @@ async def health_check():
 async def list_containers():
     """List all containers with their port bindings"""
     try:
-        client = docker.from_env()
+        client = docker.from_env(
+            environment={
+                "DOCKER_HOST": "unix:///var/run/docker.sock",
+                "DOCKER_TLS_VERIFY": "1",
+                "DOCKER_CERT_PATH": "/certs"
+            }
+        )
         containers = client.containers.list(all=True)
         containers_data = []
         
@@ -72,7 +84,13 @@ async def list_containers():
 async def get_stats():
     """Get CPU/Memory statistics from containers"""
     try:
-        client = docker.from_env()
+        client = docker.from_env(
+            environment={
+                "DOCKER_HOST": "unix:///var/run/docker.sock",
+                "DOCKER_TLS_VERIFY": "1",
+                "DOCKER_CERT_PATH": "/certs"
+            }
+        )
         
         def get_stats_for_container(container):
             try:
