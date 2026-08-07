@@ -5,7 +5,6 @@ from fastapi import Request
 from fastapi.templating import Jinja2Templates
 import docker
 import logging
-from typing import List, Dict, Any
 
 from app.config import settings
 
@@ -120,7 +119,6 @@ async def get_stats():
                         logger.debug(f"PreCPU usage: total={precpu_usage.get('total_usage')}, percpu={len(precpu_percpu_usage)}")
 
                         if 'total_usage' in cpu_usage and 'total_usage' in precpu_usage:
-                            total_delta = cpu_usage['total_usage'] - precpu_usage['total_usage']
                             percpu_delta = sum(precpu_percpu_usage) - sum(percpu_usage)
 
                             system_delta = cpu_usage.get('system_cpu_usage', 0) - precpu_usage.get('system_cpu_usage', cpu_usage.get('system_cpu_usage', 0))
