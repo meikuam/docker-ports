@@ -466,7 +466,7 @@
                 // Память в GB/MB
                 const memoryList = document.getElementById('memoryList');
                 memoryList.innerHTML = data.stats.map(stat => {
-                    const memGB = stat.memory ? (stat.memory / 1024).toFixed(2) : '0.00';
+                    const memGB = stat.memory_bytes ? (stat.memory_bytes / 1024 / 1024).toFixed(2) : '0.00';
                     return `
                         <div class="memory-item">
                             <div class="memory-info">
@@ -474,7 +474,7 @@
                                 <div class="memory-info-value">${memGB} GB</div>
                             </div>
                             <div class="memory-progress">
-                                <div class="memory-progress-fill" style="width: ${stat.memory || 0}%"></div>
+                                <div class="memory-progress-fill" style="width: ${Math.min((stat.memory_bytes || 0) / (1024 * 1024), 100)}%"></div>
                             </div>
                         </div>
                     `;

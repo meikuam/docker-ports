@@ -42,7 +42,7 @@ def test_stats_data():
     assert "id" in stat
     assert "name" in stat
     assert "cpu" in stat
-    assert "memory" in stat
+    assert "memory_bytes" in stat
     assert "net_input" in stat
     assert "net_output" in stat
 
@@ -50,8 +50,8 @@ def test_stats_data():
     assert isinstance(stat["name"], str)
     assert isinstance(stat["cpu"], (int, float))
 
-    assert "memory" in stat
-    assert isinstance(stat["memory"], (int, float))
+    assert "memory_bytes" in stat
+    assert isinstance(stat["memory_bytes"], (int, float))
 
     assert "net_input" in stat
     assert isinstance(stat["net_input"], int)

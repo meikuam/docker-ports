@@ -37,12 +37,10 @@ def get_stats_data() -> List[Dict[str, Any]]:
                         else:
                             cpu_percent = max(0, percpu_delta)
 
-            memory_percent = 0
+            memory_bytes = 0
             memory_stats = stats.get("memory_stats", {})
-            if "limit" in memory_stats and memory_stats["limit"] > 0:
-                memory_percent = (
-                    memory_stats.get("usage", 0) / memory_stats["limit"] * 100
-                )
+            if memory_stats:
+                memory_bytes = memory_stats.get("usage", 0)
 
             net_input = 0
             net_output = 0
@@ -56,7 +54,7 @@ def get_stats_data() -> List[Dict[str, Any]]:
                 "id": container.id[:12],
                 "name": container.name,
                 "cpu": round(cpu_percent, 2),
-                "memory": round(memory_percent, 2),
+                "memory_bytes": memory_bytes,
                 "net_input": net_input,
                 "net_output": net_output,
             }
