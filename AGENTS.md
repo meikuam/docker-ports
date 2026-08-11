@@ -1,45 +1,3 @@
-# Development and deployment
-
-## Running
-
-**Local (no Docker):**
-```bash
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-**Docker:**
-```bash
-# Create .env with DOCKER_TLS_VERIFY=0 if your Docker daemon uses TLS
-echo "DOCKER_TLS_VERIFY=0" > .env
-docker compose up -d
-```
-
-The app requires Docker socket access (for inspecting containers) via `/var/run/docker.sock` mounted as read-only.
-
-
-**requirements**
-
-project requirements are set in poetry with pyproject.toml file
-
-
-
-## Build
-
-```bash
-docker build -t docker-ports-viewer .
-```
-
-## Tests
-
-No tests exist yet. Add pytest + httpx for API tests (`/health`, `/containers`, `/stats`).
-
-## Lint
-
-```bash
-python -m ruff check .
-# or fix auto-fixable issues
-python -m ruff check --fix .
-```
 
 ## API endpoints
 
@@ -48,6 +6,167 @@ python -m ruff check --fix .
 - `GET /containers` - List containers + port bindings
 - `GET /stats` - CPU/Memory/network stats for all containers
 
-## TLS handling
 
-If your Docker daemon uses TLS, set `DOCKER_TLS_VERIFY=0` in `.env` to disable TLS for the Docker Python client. This is required when accessing a non-TLS Docker socket.
+
+## Общие принципы
+
+- **Язык**: Python 3.13+ (используйте последнюю стабильную версию, совместимую с Poetry).
+- **Управление зависимостями**: **Poetry** (обязательно). Не используйте pip напрямую.
+- **Линтинг и форматирование**: **Ruff** — основной инструмент для линтинга и автоформатирования. Все проверки должны проходить без ошибок.
+- **Переменные окружения**: хранятся в файле `.env` (не коммитится). Пример допустимых переменных — в `.env.dist`.
+- **Документация**: актуальная информация о проекте, установке, запуске и использовании всегда поддерживается в `README.md`.
+- **Кодовая база**: весь исходный код проекта находится в каталоге `src/`.
+
+
+```bash
+poetry run pytest
+```
+
+**Local (no Docker):**
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+**Docker:**
+```bash
+docker compose up -d
+```
+
+The app requires Docker socket access (for inspecting containers) via `/var/run/docker.sock` mounted as read-only.
+
+**Build**
+
+```bash
+docker build -t docker-ports-viewer .
+```
+
+## Структура проекта
+
+Проект должен иметь следующую структуру:
+
+```
+project-root/
+├── .env                # (не коммитится) переменные окружения
+├── .env.dist        # пример переменных окружения
+├── .gitignore          # включает .env, __pycache__, .ruff_cache, dist, build и т.п.
+├── .python-version     # (опционально) версия Python
+├── pyproject.toml      # конфигурация Poetry и Ruff
+├── poetry.lock         # блокировка зависимостей (коммитится)
+├── README.md           # основная документация
+├── src/                # весь код проекта
+│   └── <package_name>/ # пакет с кодом (например, myapp)
+│       ├── __init__.py
+│       └── ...         # модули и подпакеты
+└── tests/              # (рекомендуется) тесты, если есть
+    └── ...
+```
+
+## Работа с Poetry
+
+- **Установка зависимостей**:
+  ```bash
+  poetry install --no-root  # если проект ещё не инициализирован, или просто poetry install
+  ```
+- **Добавление новой зависимости**:
+  ```bash
+  poetry add <package>
+  ```
+  Для dev-зависимостей:
+  ```bash
+  poetry add --group dev <package>
+  ```
+- **Обновление зависимостей**:
+  ```bash
+  poetry update
+  ```
+- **Запуск скриптов** (если определены в `pyproject.toml`):
+  ```bash
+  poetry run <command>
+  ```
+- **Активация виртуального окружения** (не обязательно, но можно):
+  ```bash
+  poetry shell
+  ```
+
+## Линтинг и форматирование с Ruff
+
+Настройки Ruff должны быть прописаны в `pyproject.toml` в секции `[tool.ruff]`. Минимальные требования:
+
+- Линтинг (включая проверки на стиль, ошибки, импорты и т.д.)
+- Автоисправление (fix) и форматирование.
+
+**Обязательные команды** перед коммитом / отправкой PR:
+
+- Проверить код:
+  ```bash
+  poetry run ruff check src/ tests/
+  ```
+- Исправить автоматически:
+  ```bash
+  poetry run ruff check --fix src/ tests/
+  ```
+- Отформатировать код:
+  ```bash
+  poetry run ruff format src/ tests/
+  ```
+
+Если в проекте используется `pre-commit`, добавьте хуки для Ruff.
+
+## Переменные окружения
+
+- Все переменные окружения хранятся в файле `.env` (локально, не в репозитории).
+- Для работы с ними используйте библиотеку `python-dotenv` (добавьте её в зависимости, если необходимо).
+- В репозитории должен быть файл-пример `.env.example` со всеми необходимыми переменными (без реальных значений).
+- Всегда проверяйте наличие переменных перед запуском приложения.
+
+## Документация (README.md)
+
+`README.md` должен содержать:
+
+- Название и краткое описание проекта.
+- Требования (Python, Poetry).
+- Инструкцию по установке и настройке (клонирование, создание .env, установка зависимостей).
+- Команды для запуска приложения, тестов, линтинга.
+- Ссылки на дополнительные ресурсы (если есть).
+- Пример использования (опционально).
+
+Все изменения в коде, влияющие на поведение, конфигурацию или API, должны быть отражены в README.
+
+## Тестирование (опционально, но рекомендуется)
+
+Если проект включает тесты, они должны располагаться в каталоге `tests/`. Используйте `pytest` (добавлен в dev-зависимости). Команды:
+
+
+Код должен поддерживать разумный уровень покрытия (не менее 70–80%).
+
+## Правила для агентов
+
+1. **Перед внесением изменений**:
+   - Прочитайте текущий `README.md` и `pyproject.toml`, чтобы понять структуру и зависимости.
+   - Проверьте, что переменные окружения определены в `.env` (или в `.env.dist`).
+
+2. **При добавлении новой функциональности**:
+   - Создавайте новые модули внутри `src/<package_name>/`.
+   - Обновляйте документацию (README) и, если нужно, добавляйте примеры.
+   - Не забывайте про тесты (если проект их использует).
+
+3. **При изменении зависимостей**:
+   - Всегда используйте `poetry add` или `poetry remove`.
+   - После добавления обновите `poetry.lock` и закоммитьте его.
+
+4. **Перед завершением работы**:
+   - Запустите `poetry run ruff check --fix` и `poetry run ruff format`.
+   - Убедитесь, что все тесты проходят (если есть).
+   - Проверьте, что README актуален.
+   - Никогда не коммитьте `.env` (он должен быть в `.gitignore`).
+
+5. **Коммуникация**:
+   - Если задача неясна, запросите уточнение у пользователя.
+   - Предлагайте изменения по одному логическому шагу (коммиту), каждый с понятным сообщением.
+
+6. **Принцип работы**
+   - Всегда придерживайся принципа простоты, не выдумывай сложные решения.
+
+
+Следуйте этим инструкциям, чтобы поддерживать проект чистым, документированным и легко расширяемым.
+

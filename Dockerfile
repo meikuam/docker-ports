@@ -2,6 +2,8 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
+ENV DOCKER_HOST=unix:///var/run/docker.sock
+
 RUN apt-get update && apt-get install -y --no-install-recommends curl && \
     pip install --no-cache-dir poetry
 
