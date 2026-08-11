@@ -51,9 +51,9 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
 
-        .stats-grid {
+        .stat-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-bottom: 20px;
         }
@@ -87,15 +87,82 @@
             margin-top: 5px;
         }
 
-        .progress-bar {
-            height: 10px;
+        .cpu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .cpu-item {
+            padding: 10px;
+            background: #e8f4ff;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .cpu-item-header {
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #667eea;
+        }
+
+        .cpu-item-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .cpu-item-bar {
+            height: 6px;
+            background: #d0e4ff;
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .cpu-item-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #17a2b8);
+            transition: width 0.3s ease;
+        }
+
+        .memory-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f0f7ff;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .memory-info {
+            flex: 1;
+        }
+
+        .memory-info-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .memory-info-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .memory-progress {
+            width: 200px;
+            height: 15px;
             background: #e0e0e0;
-            border-radius: 5px;
+            border-radius: 8px;
             overflow: hidden;
             margin-top: 10px;
         }
 
-        .progress-fill {
+        .memory-progress-fill {
             height: 100%;
             background: linear-gradient(90deg, #28a745, #17a2b8);
             transition: width 0.3s ease;
@@ -290,6 +357,15 @@
                 flex-direction: column;
                 align-items: center;
             }
+
+            .memory-item {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .memory-item {
+                padding: 10px;
+            }
         }
     </style>
 </head>
@@ -302,35 +378,43 @@
 
         <div class="stats-card">
             <div class="section-title">
-                <i class="fas fa-tachometer-alt"></i>
-                Мониторинг ресурсов
+                <i class="fas fa-microchip"></i>
+                Загрузка CPU (по ядрам)
             </div>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-icon"><i class="fas fa-microchip"></i></div>
-                    <div class="stat-value" id="cpuStat">--%</div>
-                    <div class="stat-label">CPU нагрузка</div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="cpuProgress" style="width: 0%"></div>
-                    </div>
+            <div class="cpu-grid" id="cpuGrid">
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <p>Загрузка...</p>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-icon"><i class="fas fa-memory"></i></div>
-                    <div class="stat-value" id="memoryStat">--%</div>
-                    <div class="stat-label">Память</div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="memoryProgress" style="width: 0%"></div>
-                    </div>
+            </div>
+        </div>
+
+        <div class="stats-card">
+            <div class="section-title">
+                <i class="fas fa-memory"></i>
+                Использование памяти
+            </div>
+            <div id="memoryList">
+                <div class="empty-state">
+                    <p>Загрузка...</p>
                 </div>
+            </div>
+        </div>
+
+        <div class="stats-card">
+            <div class="section-title">
+                <i class="fas fa-network-wired"></i>
+                Трафик
+            </div>
+            <div class="stat-grid">
                 <div class="stat-item">
-                    <div class="stat-icon"><i class="fas fa-network-wired"></i></div>
+                    <div class="stat-icon"><i class="fas fa-arrow-down"></i></div>
                     <div class="stat-value" id="netInput">--</div>
-                    <div class="stat-label">Входящий трафик</div>
+                    <div class="stat-label">Входящий</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-icon"><i class="fas fa-server"></i></div>
+                    <div class="stat-icon"><i class="fas fa-arrow-up"></i></div>
                     <div class="stat-value" id="netOutput">--</div>
-                    <div class="stat-label">Исходящий трафик</div>
+                    <div class="stat-label">Исходящий</div>
                 </div>
             </div>
         </div>
@@ -361,31 +445,47 @@
                 const response = await fetch('/stats');
                 const data = await response.json();
 
-                if (data.stats && data.stats.length > 0) {
-                    let totalCpu = 0;
-                    let totalMemory = 0;
-                    let totalNetInput = 0;
-                    let totalNetOutput = 0;
-
-                    data.stats.forEach(stat => {
-                        totalCpu += stat.cpu || 0;
-                        totalMemory += stat.memory || 0;
-                        totalNetInput += stat.net_input || 0;
-                        totalNetOutput += stat.net_output || 0;
-                    });
-
-                    const avgCpu = data.stats.length > 0 ? (totalCpu / data.stats.length) : 0;
-                    const avgMemory = data.stats.length > 0 ? (totalMemory / data.stats.length) : 0;
-
-                    document.getElementById('cpuStat').textContent = avgCpu.toFixed(1) + '%';
-                    document.getElementById('cpuProgress').style.width = avgCpu + '%';
-
-                    document.getElementById('memoryStat').textContent = avgMemory.toFixed(1) + '%';
-                    document.getElementById('memoryProgress').style.width = avgMemory + '%';
-
-                    document.getElementById('netInput').textContent = formatBytes(totalNetInput);
-                    document.getElementById('netOutput').textContent = formatBytes(totalNetOutput);
+                if (!data.stats || data.stats.length === 0) {
+                    return;
                 }
+
+                // CPU по ядрам
+                const cpuGrid = document.getElementById('cpuGrid');
+                cpuGrid.innerHTML = data.stats.map((stat, index) => `
+                    <div class="cpu-item">
+                        <div class="cpu-item-header">
+                            <i class="fas fa-microchip"></i> Ядро #${index + 1}
+                        </div>
+                        <div class="cpu-item-value">${stat.cpu ? stat.cpu.toFixed(1) + '%' : '0%'}</div>
+                        <div class="cpu-item-bar">
+                            <div class="cpu-item-bar-fill" style="width: ${stat.cpu || 0}%"></div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Память в GB/MB
+                const memoryList = document.getElementById('memoryList');
+                memoryList.innerHTML = data.stats.map(stat => {
+                    const memGB = stat.memory ? (stat.memory / 1024).toFixed(2) : '0.00';
+                    return `
+                        <div class="memory-item">
+                            <div class="memory-info">
+                                <div class="memory-info-label">${stat.name}</div>
+                                <div class="memory-info-value">${memGB} GB</div>
+                            </div>
+                            <div class="memory-progress">
+                                <div class="memory-progress-fill" style="width: ${stat.memory || 0}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Трафик
+                const totalNetInput = data.stats.reduce((sum, stat) => sum + (stat.net_input || 0), 0);
+                const totalNetOutput = data.stats.reduce((sum, stat) => sum + (stat.net_output || 0), 0);
+
+                document.getElementById('netInput').textContent = formatBytes(totalNetInput);
+                document.getElementById('netOutput').textContent = formatBytes(totalNetOutput);
             } catch (error) {
                 console.error('Error loading stats:', error);
             }
